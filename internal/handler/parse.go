@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,40 +9,9 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/kstsm/wb-sales-tracker/internal/apperrors"
 	"github.com/kstsm/wb-sales-tracker/internal/dto"
-	"github.com/kstsm/wb-sales-tracker/internal/models"
 )
-
-func (h *Handler) respondJSON(w http.ResponseWriter, status int, data any) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	err := json.NewEncoder(w).Encode(data)
-	if err != nil {
-		h.log.Errorf("respondJSON: %v", err.Error())
-		return
-	}
-}
-
-func (h *Handler) respondError(w http.ResponseWriter, status int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	err := json.NewEncoder(w).Encode(models.Error{Error: message})
-	if err != nil {
-		h.log.Errorf("respondError: %v", err.Error())
-		return
-	}
-}
-
-func (h *Handler) respondCSV(w http.ResponseWriter, status int, data []byte) {
-	w.Header().Set("Content-Type", "text/csv")
-	w.Header().Set("Content-Disposition", "attachment; filename=items.csv")
-	w.WriteHeader(status)
-	_, err := w.Write(data)
-	if err != nil {
-		h.log.Errorf("respondJSON: %v", err.Error())
-		return
-	}
-}
 
 func parseUUIDParam(r *http.Request, param string) (uuid.UUID, error) {
 	value := chi.URLParam(r, param)
@@ -62,17 +30,32 @@ func parseUUIDParam(r *http.Request, param string) (uuid.UUID, error) {
 func parseGetItemsQuery(r *http.Request, req *dto.GetItemsRequest) error {
 	q := r.URL.Query()
 
+	allowedParams := map[string]bool{
+		"from":       true,
+		"to":         true,
+		"type":       true,
+		"category":   true,
+		"sort_by":    true,
+		"sort_order": true,
+	}
+
+	for param := range q {
+		if !allowedParams[param] {
+			return fmt.Errorf("unknown parameter '%s'", param)
+		}
+	}
+
 	var err error
 	if fromStr := q.Get("from"); fromStr != "" {
 		req.From, err = parseDate(fromStr)
-		if err != nil && !errors.Is(err, errEmptyDate) {
+		if err != nil && !errors.Is(err, apperrors.ErrEmptyDate) {
 			return err
 		}
 	}
 
 	if toStr := q.Get("to"); toStr != "" {
 		req.To, err = parseDate(toStr)
-		if err != nil && !errors.Is(err, errEmptyDate) {
+		if err != nil && !errors.Is(err, apperrors.ErrEmptyDate) {
 			return err
 		}
 	}
@@ -81,20 +64,30 @@ func parseGetItemsQuery(r *http.Request, req *dto.GetItemsRequest) error {
 		return errors.New("parameter 'from' cannot be after 'to'")
 	}
 
-	if typeStr := q.Get("type"); typeStr != "" {
+	typeStr := strings.TrimSpace(q.Get("type"))
+	if typeStr != "" {
 		req.Type = &typeStr
+	} else if q.Has("type") {
+		return errors.New("parameter 'type' cannot be empty")
 	}
 
-	if categoryStr := q.Get("category"); categoryStr != "" {
+	categoryStr := strings.TrimSpace(q.Get("category"))
+	if categoryStr != "" {
 		req.Category = &categoryStr
 	}
 
-	if sortByStr := q.Get("sort_by"); sortByStr != "" {
+	sortByStr := strings.TrimSpace(q.Get("sort_by"))
+	if sortByStr != "" {
 		req.SortBy = &sortByStr
+	} else if q.Has("sort_by") {
+		return errors.New("parameter 'sort_by' cannot be empty")
 	}
 
-	if sortOrderStr := q.Get("sort_order"); sortOrderStr != "" {
+	sortOrderStr := strings.TrimSpace(q.Get("sort_order"))
+	if sortOrderStr != "" {
 		req.SortOrder = &sortOrderStr
+	} else if q.Has("sort_order") {
+		return errors.New("parameter 'sort_order' cannot be empty")
 	}
 
 	return nil
@@ -135,11 +128,9 @@ func parseAnalyticsQuery(r *http.Request, req *dto.AnalyticsRequest) error {
 	return nil
 }
 
-var errEmptyDate = errors.New("empty date string")
-
 func parseDate(s string) (*time.Time, error) {
 	if s == "" {
-		return nil, errEmptyDate
+		return nil, apperrors.ErrEmptyDate
 	}
 
 	s = strings.TrimSpace(s)

@@ -10,10 +10,10 @@ func FormatGroupKey(groupKey any, groupBy string) string {
 	switch v := groupKey.(type) {
 	case time.Time:
 		if groupBy == "week" {
-			year, week := v.ISOWeek()
+			year, week := v.UTC().ISOWeek()
 			return fmt.Sprintf("%d-W%02d", year, week)
 		}
-		return v.Format("2006-01-02")
+		return v.UTC().Format("2006-01-02")
 	case string:
 		return v
 	default:

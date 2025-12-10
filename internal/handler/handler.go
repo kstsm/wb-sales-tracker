@@ -4,10 +4,10 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-playground/validator/v10"
 	"github.com/gookit/slog"
 	"github.com/kstsm/wb-sales-tracker/internal/middleware"
 	"github.com/kstsm/wb-sales-tracker/internal/service"
+	"github.com/kstsm/wb-sales-tracker/pkg/validator"
 )
 
 type ItemManager interface {

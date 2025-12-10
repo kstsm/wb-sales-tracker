@@ -1,14 +1,20 @@
 package validator
 
 import (
+	"errors"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gookit/slog"
 )
 
-func NewValidator() *validator.Validate {
+type Validate struct {
+	*validator.Validate
+}
+
+func NewValidator() *Validate {
 	validate := validator.New(validator.WithRequiredStructEnabled())
 
 	if err := validate.RegisterValidation("rfc3339", ValidateRFC3339); err != nil {
@@ -28,7 +34,26 @@ func NewValidator() *validator.Validate {
 		os.Exit(1)
 	}
 
-	return validate
+	return &Validate{Validate: validate}
+}
+
+func (v *Validate) FormatValidationError(err error) string {
+	var validationErrors validator.ValidationErrors
+	if errors.As(err, &validationErrors) {
+		var messages []string
+		for _, e := range validationErrors {
+			msg := e.Error()
+			if idx := strings.Index(msg, "Error:"); idx != -1 {
+				msg = strings.TrimSpace(msg[idx+len("Error:"):])
+			}
+			msg = strings.TrimPrefix(msg, "Field ")
+			messages = append(messages, msg)
+		}
+		if len(messages) > 0 {
+			return messages[0]
+		}
+	}
+	return err.Error()
 }
 
 func ValidateRFC3339(fl validator.FieldLevel) bool {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/kstsm/wb-sales-tracker/internal/converter"
 	"github.com/kstsm/wb-sales-tracker/internal/dto"
@@ -11,8 +13,8 @@ import (
 )
 
 func (r *Repository) GetAnalytics(ctx context.Context, req dto.AnalyticsRequest) (*dto.AnalyticsResponse, error) {
-	whereClause, args := req.BuildWhere()
-	if groupBy := req.GetGroupBy(); groupBy != "" {
+	whereClause, args := r.buildAnalyticsWhere(req)
+	if groupBy := r.getAnalyticsGroupBy(req); groupBy != "" {
 		return r.getGroupedAnalytics(ctx, whereClause, args, groupBy, req)
 	}
 
@@ -31,8 +33,8 @@ func (r *Repository) GetAnalytics(ctx context.Context, req dto.AnalyticsRequest)
 		sumValue = sum.Float64
 	}
 
-	fromStr := req.From.Format("2006-01-02")
-	toStr := req.To.Format("2006-01-02")
+	fromStr := req.From.Format(time.RFC3339)
+	toStr := req.To.Format(time.RFC3339)
 
 	return &dto.AnalyticsResponse{
 		From:         fromStr,
@@ -100,8 +102,8 @@ func (r *Repository) getGroupedAnalytics(ctx context.Context,
 		totalAvg = &avg
 	}
 
-	fromStr := req.From.Format("2006-01-02")
-	toStr := req.To.Format("2006-01-02")
+	fromStr := req.From.Format(time.RFC3339)
+	toStr := req.To.Format(time.RFC3339)
 
 	return &dto.AnalyticsResponse{
 		From:    fromStr,
@@ -124,4 +126,50 @@ func (r *Repository) getGroupedQuery(groupBy, whereClause string) (string, error
 	default:
 		return "", fmt.Errorf("unsupported group_by value: %s", groupBy)
 	}
+}
+
+func (r *Repository) buildAnalyticsWhere(req dto.AnalyticsRequest) (string, []any) {
+	var cond []string
+	var args []any
+
+	add := func(query string, val any) {
+		cond = append(cond, fmt.Sprintf(query, len(args)+1))
+		args = append(args, val)
+	}
+
+	if req.From != nil {
+		fromStartOfDay := time.Date(req.From.Year(),
+			req.From.Month(),
+			req.From.Day(), 0, 0, 0, 0,
+			req.From.Location())
+		add("date >= $%d", fromStartOfDay)
+	}
+	if req.To != nil {
+		toEndOfDay := time.Date(req.To.Year(),
+			req.To.Month(),
+			req.To.Day(), 23, 59, 59, 999999999,
+			req.To.Location())
+		add("date <= $%d", toEndOfDay)
+	}
+
+	if len(cond) == 0 {
+		return "", args
+	}
+
+	return " WHERE " + strings.Join(cond, " AND "), args
+}
+
+func (r *Repository) getAnalyticsGroupBy(req dto.AnalyticsRequest) string {
+	if req.GroupBy == nil {
+		return ""
+	}
+	allowed := map[string]string{
+		"day":      "day",
+		"week":     "week",
+		"category": "category",
+	}
+	if val, ok := allowed[strings.ToLower(*req.GroupBy)]; ok {
+		return val
+	}
+	return ""
 }

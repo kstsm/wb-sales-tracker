@@ -1,13 +1,13 @@
 package dto
 
 type ItemResponse struct {
-	ID        string  `json:"id,omitempty"`
-	Type      string  `json:"type,omitempty"`
-	Amount    float64 `json:"amount,omitempty"`
-	Date      string  `json:"date,omitempty"`
-	Category  string  `json:"category,omitempty"`
-	CreatedAt string  `json:"created_at,omitempty"`
-	UpdatedAt string  `json:"updated_at,omitempty"`
+	ID        string `json:"id,omitempty"`
+	Type      string `json:"type,omitempty"`
+	Amount    string `json:"amount,omitempty"`
+	Date      string `json:"date,omitempty"`
+	Category  string `json:"category,omitempty"`
+	CreatedAt string `json:"created_at,omitempty"`
+	UpdatedAt string `json:"updated_at,omitempty"`
 }
 
 type ItemsListResponse struct {

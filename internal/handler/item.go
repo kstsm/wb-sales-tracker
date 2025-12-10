@@ -13,18 +13,18 @@ import (
 func (h *Handler) createItemHandler(w http.ResponseWriter, r *http.Request) {
 	var req dto.CreateItemRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondError(w, http.StatusBadRequest, err.Error())
+		h.respondError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
 	if err := h.valid.Struct(req); err != nil {
-		h.respondError(w, http.StatusBadRequest, err.Error())
+		h.respondError(w, http.StatusBadRequest, h.valid.FormatValidationError(err))
 		return
 	}
 
 	result, err := h.service.CreateItem(r.Context(), req)
 	if err != nil {
-		h.respondError(w, http.StatusBadRequest, err.Error())
+		h.respondError(w, http.StatusBadRequest, "internal server error")
 		return
 	}
 
@@ -43,7 +43,7 @@ func (h *Handler) getItemByIDHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrItemNotFound):
-			h.respondError(w, http.StatusNotFound, "Item not found")
+			h.respondError(w, http.StatusNotFound, "item not found")
 		default:
 			h.respondError(w, http.StatusInternalServerError, "Failed to get item")
 		}
@@ -59,6 +59,11 @@ func (h *Handler) getItemsHandler(w http.ResponseWriter, r *http.Request) {
 
 	if err := parseGetItemsQuery(r, &req); err != nil {
 		h.respondError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.valid.Struct(req); err != nil {
+		h.respondError(w, http.StatusBadRequest, h.valid.FormatValidationError(err))
 		return
 	}
 
@@ -89,7 +94,7 @@ func (h *Handler) updateItemHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = h.valid.Struct(req); err != nil {
-		h.respondError(w, http.StatusBadRequest, err.Error())
+		h.respondError(w, http.StatusBadRequest, h.valid.FormatValidationError(err))
 		return
 	}
 
@@ -97,7 +102,7 @@ func (h *Handler) updateItemHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrItemNotFound):
-			h.respondError(w, http.StatusNotFound, "Item not found")
+			h.respondError(w, http.StatusNotFound, "item not found")
 		default:
 			h.respondError(w, http.StatusInternalServerError, "internal server error")
 		}
@@ -119,7 +124,7 @@ func (h *Handler) deleteItemHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrItemNotFound):
-			h.respondError(w, http.StatusNotFound, "Item not found")
+			h.respondError(w, http.StatusNotFound, "item not found")
 		default:
 			h.respondError(w, http.StatusInternalServerError, "internal server error")
 		}
@@ -137,11 +142,16 @@ func (h *Handler) exportItemCSVHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := h.valid.Struct(req); err != nil {
+		h.respondError(w, http.StatusBadRequest, h.valid.FormatValidationError(err))
+		return
+	}
+
 	data, err := h.service.ExportItemsCSV(r.Context(), req)
 	if err != nil {
 		switch {
 		case errors.Is(err, apperrors.ErrItemNotFound):
-			h.respondError(w, http.StatusNotFound, "Item not found")
+			h.respondError(w, http.StatusNotFound, "item not found")
 		default:
 			h.respondError(w, http.StatusInternalServerError, "internal server error")
 		}
