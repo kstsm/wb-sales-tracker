@@ -14,8 +14,12 @@ import (
 	"github.com/kstsm/wb-sales-tracker/internal/repository/queries"
 )
 
+const (
+	kopeksPerRuble = 100
+)
+
 func (r *Repository) CreateItem(ctx context.Context, item models.Item) error {
-	amountFloat := float64(item.Amount) / 100.0
+	amountFloat := float64(item.Amount) / float64(kopeksPerRuble)
 
 	_, err := r.conn.Exec(ctx, queries.CreateItemQuery,
 		item.ID,
@@ -53,7 +57,7 @@ func (r *Repository) GetItemByID(ctx context.Context, id uuid.UUID) (*models.Ite
 		return nil, fmt.Errorf("QueryRow-getItemByID: %w", err)
 	}
 
-	item.Amount = int64(amountFloat * 100)
+	item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 
 	return &item, nil
 }
@@ -88,7 +92,7 @@ func (r *Repository) GetItems(ctx context.Context, req dto.GetItemsRequest) ([]*
 		); err != nil {
 			return nil, 0, fmt.Errorf("Scan-GetItems: %w", err)
 		}
-		item.Amount = int64(amountFloat * 100)
+		item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 		items = append(items, &item)
 	}
 	if err = rows.Err(); err != nil {
@@ -102,9 +106,9 @@ func (r *Repository) UpdateItem(ctx context.Context, id uuid.UUID, req dto.Updat
 	var item models.Item
 	var amountFloat float64
 
-	var amountVal interface{}
+	var amountVal any
 	if req.Amount != nil {
-		amountVal = float64(*req.Amount) / 100.0
+		amountVal = float64(*req.Amount) / float64(kopeksPerRuble)
 	} else {
 		amountVal = nil
 	}
@@ -133,7 +137,7 @@ func (r *Repository) UpdateItem(ctx context.Context, id uuid.UUID, req dto.Updat
 		return nil, fmt.Errorf("QueryRow-UpdateItem: %w", err)
 	}
 
-	item.Amount = int64(amountFloat * 100)
+	item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 
 	return &item, nil
 }
@@ -176,7 +180,7 @@ func (r *Repository) GetItemsForExport(ctx context.Context, req dto.GetItemsRequ
 		); err != nil {
 			return nil, fmt.Errorf("Scan-GetItemsForExport: %w", err)
 		}
-		item.Amount = int64(amountFloat * 100)
+		item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 		items = append(items, &item)
 	}
 

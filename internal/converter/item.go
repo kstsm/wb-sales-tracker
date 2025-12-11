@@ -9,11 +9,15 @@ import (
 	"github.com/kstsm/wb-sales-tracker/internal/models"
 )
 
+const (
+	kopeksPerRuble = 100
+)
+
 func ItemToResponse(item *models.Item) dto.ItemResponse {
-	amountFloat := float64(item.Amount) / 100.0
-	totalKopeks := int64(math.Round(amountFloat * 100))
-	rubles := totalKopeks / 100
-	kopeks := totalKopeks % 100
+	amountFloat := float64(item.Amount) / float64(kopeksPerRuble)
+	totalKopeks := int64(math.Round(amountFloat * float64(kopeksPerRuble)))
+	rubles := totalKopeks / kopeksPerRuble
+	kopeks := totalKopeks % kopeksPerRuble
 	amountStr := fmt.Sprintf("%d.%02d", rubles, kopeks)
 
 	return dto.ItemResponse{

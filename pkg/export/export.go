@@ -27,7 +27,7 @@ func GetStructColumnNames(data any) ([]string, error) {
 	t := v.Type()
 	cols := make([]string, 0, t.NumField())
 
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 		jsonTag := field.Tag.Get("json")
 		if jsonTag != "" && jsonTag != "-" {
@@ -68,7 +68,7 @@ func ConvertStructToCSV(data any) ([]string, error) {
 	t := v.Type()
 	record := make([]string, 0, t.NumField())
 
-	for i := 0; i < v.NumField(); i++ {
+	for i := range v.NumField() {
 		field := v.Field(i)
 		fieldValue := field.Interface()
 
@@ -92,6 +92,21 @@ func ConvertStructToCSV(data any) ([]string, error) {
 	return record, nil
 }
 
+func getSampleData(v reflect.Value) any {
+	if v.Len() > 0 {
+		return v.Index(0).Interface()
+	}
+
+	sliceType := v.Type()
+	elemType := sliceType.Elem()
+
+	if elemType.Kind() == reflect.Ptr {
+		elemType = elemType.Elem()
+	}
+
+	return reflect.New(elemType).Interface()
+}
+
 func WriteItemsCSV(w io.Writer, cols []string, items any) error {
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
@@ -106,20 +121,7 @@ func WriteItemsCSV(w io.Writer, cols []string, items any) error {
 	}
 
 	if len(cols) == 0 {
-		var sampleData any
-		if v.Len() > 0 {
-			sampleData = v.Index(0).Interface()
-		} else {
-			sliceType := v.Type()
-			elemType := sliceType.Elem()
-
-			if elemType.Kind() == reflect.Ptr {
-				elemType = elemType.Elem()
-			}
-
-			sampleData = reflect.New(elemType).Interface()
-		}
-
+		sampleData := getSampleData(v)
 		var err error
 		cols, err = GetStructColumnNames(sampleData)
 		if err != nil {
@@ -131,7 +133,7 @@ func WriteItemsCSV(w io.Writer, cols []string, items any) error {
 		return fmt.Errorf("writer.Write: %w", err)
 	}
 
-	for i := 0; i < v.Len(); i++ {
+	for i := range v.Len() {
 		item := v.Index(i).Interface()
 		record, err := ConvertStructToCSV(item)
 		if err != nil {
