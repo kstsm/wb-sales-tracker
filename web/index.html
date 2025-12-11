@@ -250,7 +250,16 @@
         e.preventDefault();
         
         const amountValue = parseFloat(document.getElementById('amount').value);
+        if (isNaN(amountValue) || amountValue <= 0) {
+            showMessage('Сумма должна быть больше 0', 'error');
+            return;
+        }
+        
         const amountInKopeks = Math.round(amountValue * 100);
+        if (amountInKopeks <= 0) {
+            showMessage('Сумма должна быть больше 0', 'error');
+            return;
+        }
         
         const formData = {
             type: document.getElementById('type').value,
@@ -551,7 +560,16 @@
         }
         
         const amountValue = parseFloat(document.getElementById('editAmount').value);
+        if (isNaN(amountValue) || amountValue <= 0) {
+            showMessage('Сумма должна быть больше 0', 'error');
+            return;
+        }
+        
         const amountInKopeks = Math.round(amountValue * 100);
+        if (amountInKopeks <= 0) {
+            showMessage('Сумма должна быть больше 0', 'error');
+            return;
+        }
         
         const formData = {
             type: document.getElementById('editType').value,

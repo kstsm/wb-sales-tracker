@@ -3,6 +3,7 @@ package validator
 import (
 	"errors"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -63,7 +64,16 @@ func ValidateRFC3339(fl validator.FieldLevel) bool {
 }
 
 func ValidateItemType(fl validator.FieldLevel) bool {
-	value := fl.Field().String()
+	field := fl.Field()
+
+	if field.Kind() == reflect.Ptr {
+		if field.IsNil() {
+			return true
+		}
+		field = field.Elem()
+	}
+
+	value := field.String()
 	return value == "income" || value == "expense"
 }
 

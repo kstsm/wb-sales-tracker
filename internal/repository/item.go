@@ -14,17 +14,11 @@ import (
 	"github.com/kstsm/wb-sales-tracker/internal/repository/queries"
 )
 
-const (
-	kopeksPerRuble = 100
-)
-
 func (r *Repository) CreateItem(ctx context.Context, item models.Item) error {
-	amountFloat := float64(item.Amount) / float64(kopeksPerRuble)
-
 	_, err := r.conn.Exec(ctx, queries.CreateItemQuery,
 		item.ID,
 		item.Type,
-		amountFloat,
+		item.Amount,
 		item.Date,
 		item.Category,
 		item.CreatedAt,
@@ -39,12 +33,11 @@ func (r *Repository) CreateItem(ctx context.Context, item models.Item) error {
 
 func (r *Repository) GetItemByID(ctx context.Context, id uuid.UUID) (*models.Item, error) {
 	var item models.Item
-	var amountFloat float64
 
 	err := r.conn.QueryRow(ctx, queries.GetItemByIDQuery, id).Scan(
 		&item.ID,
 		&item.Type,
-		&amountFloat,
+		&item.Amount,
 		&item.Date,
 		&item.Category,
 		&item.CreatedAt,
@@ -56,8 +49,6 @@ func (r *Repository) GetItemByID(ctx context.Context, id uuid.UUID) (*models.Ite
 		}
 		return nil, fmt.Errorf("QueryRow-getItemByID: %w", err)
 	}
-
-	item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 
 	return &item, nil
 }
@@ -80,11 +71,10 @@ func (r *Repository) GetItems(ctx context.Context, req dto.GetItemsRequest) ([]*
 	var items []*models.Item
 	for rows.Next() {
 		var item models.Item
-		var amountFloat float64
 		if err = rows.Scan(
 			&item.ID,
 			&item.Type,
-			&amountFloat,
+			&item.Amount,
 			&item.Date,
 			&item.Category,
 			&item.CreatedAt,
@@ -92,7 +82,6 @@ func (r *Repository) GetItems(ctx context.Context, req dto.GetItemsRequest) ([]*
 		); err != nil {
 			return nil, 0, fmt.Errorf("Scan-GetItems: %w", err)
 		}
-		item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 		items = append(items, &item)
 	}
 	if err = rows.Err(); err != nil {
@@ -104,11 +93,10 @@ func (r *Repository) GetItems(ctx context.Context, req dto.GetItemsRequest) ([]*
 
 func (r *Repository) UpdateItem(ctx context.Context, id uuid.UUID, req dto.UpdateItemRequest) (*models.Item, error) {
 	var item models.Item
-	var amountFloat float64
 
 	var amountVal any
 	if req.Amount != nil {
-		amountVal = float64(*req.Amount) / float64(kopeksPerRuble)
+		amountVal = *req.Amount
 	} else {
 		amountVal = nil
 	}
@@ -124,7 +112,7 @@ func (r *Repository) UpdateItem(ctx context.Context, id uuid.UUID, req dto.Updat
 	).Scan(
 		&item.ID,
 		&item.Type,
-		&amountFloat,
+		&item.Amount,
 		&item.Date,
 		&item.Category,
 		&item.CreatedAt,
@@ -136,8 +124,6 @@ func (r *Repository) UpdateItem(ctx context.Context, id uuid.UUID, req dto.Updat
 		}
 		return nil, fmt.Errorf("QueryRow-UpdateItem: %w", err)
 	}
-
-	item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 
 	return &item, nil
 }
@@ -168,11 +154,10 @@ func (r *Repository) GetItemsForExport(ctx context.Context, req dto.GetItemsRequ
 	var items []*models.Item
 	for rows.Next() {
 		var item models.Item
-		var amountFloat float64
 		if err = rows.Scan(
 			&item.ID,
 			&item.Type,
-			&amountFloat,
+			&item.Amount,
 			&item.Date,
 			&item.Category,
 			&item.CreatedAt,
@@ -180,7 +165,6 @@ func (r *Repository) GetItemsForExport(ctx context.Context, req dto.GetItemsRequ
 		); err != nil {
 			return nil, fmt.Errorf("Scan-GetItemsForExport: %w", err)
 		}
-		item.Amount = int64(amountFloat * float64(kopeksPerRuble))
 		items = append(items, &item)
 	}
 

@@ -2,7 +2,6 @@ package converter
 
 import (
 	"fmt"
-	"math"
 	"time"
 
 	"github.com/kstsm/wb-sales-tracker/internal/dto"
@@ -13,17 +12,22 @@ const (
 	kopeksPerRuble = 100
 )
 
-func ItemToResponse(item *models.Item) dto.ItemResponse {
-	amountFloat := float64(item.Amount) / float64(kopeksPerRuble)
-	totalKopeks := int64(math.Round(amountFloat * float64(kopeksPerRuble)))
-	rubles := totalKopeks / kopeksPerRuble
-	kopeks := totalKopeks % kopeksPerRuble
-	amountStr := fmt.Sprintf("%d.%02d", rubles, kopeks)
+func FormatRublesAmount(amount int) string {
+	rubles := amount / kopeksPerRuble
+	kopeks := amount % kopeksPerRuble
 
+	if kopeks < 0 {
+		kopeks = -kopeks
+	}
+
+	return fmt.Sprintf("%d.%02d", rubles, kopeks)
+}
+
+func ItemToResponse(item *models.Item) dto.ItemResponse {
 	return dto.ItemResponse{
 		ID:        item.ID.String(),
 		Type:      item.Type,
-		Amount:    amountStr,
+		Amount:    FormatRublesAmount(item.Amount),
 		Date:      item.Date.UTC().Format(time.RFC3339),
 		Category:  item.Category,
 		CreatedAt: item.CreatedAt.UTC().Format(time.RFC3339),

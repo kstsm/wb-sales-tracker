@@ -28,9 +28,29 @@ func (r *Repository) GetAnalytics(ctx context.Context, req dto.AnalyticsRequest)
 		return nil, fmt.Errorf("QueryRow-GetAnalytics: %w", err)
 	}
 
+	const kopeksPerRuble = 100.0
+
 	sumValue := 0.0
 	if sum.Valid {
-		sumValue = sum.Float64
+		sumValue = sum.Float64 / kopeksPerRuble
+	}
+
+	var avgValue *float64
+	if avg.Valid && count > 0 {
+		val := avg.Float64 / kopeksPerRuble
+		avgValue = &val
+	}
+
+	var medianValue *float64
+	if median.Valid && count > 0 {
+		val := median.Float64 / kopeksPerRuble
+		medianValue = &val
+	}
+
+	var percentile90Value *float64
+	if percentile90.Valid && count > 0 {
+		val := percentile90.Float64 / kopeksPerRuble
+		percentile90Value = &val
 	}
 
 	fromStr := req.From.Format(time.RFC3339)
@@ -40,10 +60,10 @@ func (r *Repository) GetAnalytics(ctx context.Context, req dto.AnalyticsRequest)
 		From:         fromStr,
 		To:           toStr,
 		Sum:          sumValue,
-		Avg:          converter.ToFloatPtrIf(avg, count > 0),
+		Avg:          avgValue,
 		Count:        count,
-		Median:       converter.ToFloatPtrIf(median, count > 0),
-		Percentile90: converter.ToFloatPtrIf(percentile90, count > 0),
+		Median:       medianValue,
+		Percentile90: percentile90Value,
 	}, nil
 }
 
@@ -68,6 +88,8 @@ func (r *Repository) getGroupedAnalytics(ctx context.Context,
 	var totalSum float64
 	var totalCount int
 
+	const kopeksPerRuble = 100.0
+
 	for rows.Next() {
 		var groupKey any
 		var sum, avg, median, percentile90 sql.NullFloat64
@@ -77,18 +99,40 @@ func (r *Repository) getGroupedAnalytics(ctx context.Context,
 			return nil, fmt.Errorf("Scan-GetGroupedAnalytics: %w", scanErr)
 		}
 
+		var sumValue *float64
 		if sum.Valid {
-			totalSum += sum.Float64
+			val := sum.Float64 / kopeksPerRuble
+			sumValue = &val
+			totalSum += val
 		}
+
+		var avgValue *float64
+		if avg.Valid && count > 0 {
+			val := avg.Float64 / kopeksPerRuble
+			avgValue = &val
+		}
+
+		var medianValue *float64
+		if median.Valid && count > 0 {
+			val := median.Float64 / kopeksPerRuble
+			medianValue = &val
+		}
+
+		var percentile90Value *float64
+		if percentile90.Valid && count > 0 {
+			val := percentile90.Float64 / kopeksPerRuble
+			percentile90Value = &val
+		}
+
 		totalCount += count
 
 		grouped = append(grouped, dto.GroupedAnalytics{
 			Group:        converter.FormatGroupKey(groupKey, groupBy),
-			Sum:          converter.ToFloatPtr(sum),
-			Avg:          converter.ToFloatPtrIf(avg, count > 0),
+			Sum:          sumValue,
+			Avg:          avgValue,
 			Count:        count,
-			Median:       converter.ToFloatPtrIf(median, count > 0),
-			Percentile90: converter.ToFloatPtrIf(percentile90, count > 0),
+			Median:       medianValue,
+			Percentile90: percentile90Value,
 		})
 	}
 
